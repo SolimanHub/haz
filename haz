@@ -1,0 +1,48 @@
+#!/bin/bash
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Importar módulos
+source "$DIR/lib/core.sh"
+source "$DIR/lib/menu.sh"
+source "$DIR/lib/executor.sh"
+source "$DIR/lib/analyzer.sh"
+
+# Verificar dependencias básicas
+verificar_dependencias
+
+# Argumentos
+[ "$#" -lt 1 ] && { mostrar_uso; exit 1; }
+query="$*"
+my_system=$(hostnamectl | grep -E "Operating System|Kernel|Architecture" | head -n 3)
+prompt=$(generar_prompt "$my_system" "$query")
+
+# Seleccionar modelo (establece modelo, tipo, script_consulta)
+seleccionar_modelo
+
+# Obtener comando desde el script correspondiente
+comando=$("$script_consulta" "$modelo" "$prompt" 2>&1)
+if [ $? -ne 0 ] || [ -z "$comando" ] || [ "$comando" = "null" ]; then
+    echo -e "\033[31m✖ Fallo en la consulta al modelo\033[0m"
+    [ -n "$comando" ] && echo "$comando"
+    exit 1
+fi
+
+# Limpiar y validar
+comando=$(limpiar_comando "$comando")
+validar_comando "$comando" || exit 1
+
+# Archivo de registro
+archivo=$(generar_nombre_archivo_md)
+inicializar_registro "$archivo" "$query" "$modelo" "$tipo" "$comando"
+
+# Ejecutar y mostrar resultado
+ejecutar_y_registrar "$comando" "$archivo"
+resultado=$?
+mostrar_resultado $resultado
+
+# Análisis opcional si falló o tuvo salida
+if [ $resultado -ne 0 ] || [ $resultado -eq 2 ]; then
+    analizar_si_es_necesario "$comando" "$archivo" "$modelo" "$tipo" "$script_consulta"
+fi
+
+exit 0
