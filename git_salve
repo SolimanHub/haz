@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e -u
+
+# checking if I have the latest files from github
+echo -e "\033[32mChecking for newer files online first\033[0m"
+git pull
+# Below command will backup everything inside the project folder
+git add --all .
+# Give a comment to the commit if you want
+if [ $# -eq 0 ]; then
+  echo -e "\033[32m###################################\033[0m"
+  echo -e "\033[32mWrite your commit comment!\033[0m"
+  echo -e "\033[32m###################################\033[0m"
+  read input
+else 
+  input=$*
+fi
+# Committing to the local repository with a message containing the time details and commit text
+git commit -m "$input"
+# Push the local files to github
+git push
+  echo -e "\033[32m###################################\033[0m"
+  echo -e "\033[32m#########  Git Push Done  #########\033[0m"
+  echo -e "\033[32m###################################\033[0m"
