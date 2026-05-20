@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directorio de logs (expande ~ correctamente)
-LOGS_DIR="$HOME/logs_haz"
+LOGS_DIR="$HOME/.haz/logs_haz"
 
 # Crear directorio de logs si no existe
 if [ ! -d "$LOGS_DIR" ]; then

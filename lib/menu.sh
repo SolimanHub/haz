@@ -12,6 +12,7 @@ MODELOS_REMOTOS=(
 modelo=""
 tipo=""
 script_consulta=""
+LAST_MODEL_FILE="$HOME/.haz/haz_last_model"
 
 seleccionar_modelo() {
     local modelos_locales=()
@@ -19,28 +20,62 @@ seleccionar_modelo() {
         mapfile -t modelos_locales < <(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}')
     fi
 
+    local total_locales=${#modelos_locales[@]}
+    local total_remotos=${#MODELOS_REMOTOS[@]}
+    local total=$((total_locales + total_remotos))
+
+    # Leer última selección
+    local last_sel=""
+    if [[ -f "$LAST_MODEL_FILE" ]]; then
+        last_sel=$(cat "$LAST_MODEL_FILE")
+        # Validar que el número esté en rango (por si cambió la lista)
+        if [[ ! "$last_sel" =~ ^[0-9]+$ ]] || [[ "$last_sel" -lt 1 ]] || [[ "$last_sel" -gt "$total" ]]; then
+            last_sel=""
+        fi
+    fi
+
+    # Mostrar menú
     echo -e "\033[1;36mLocales\033[0m"
     for i in "${!modelos_locales[@]}"; do
-        printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m\n" $((i+1)) "${modelos_locales[$i]}"
+        local num=$((i+1))
+        if [[ -n "$last_sel" && "$num" -eq "$last_sel" ]]; then
+            printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m \033[33m(default)\033[0m\n" "$num" "${modelos_locales[$i]}"
+        else
+            printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m\n" "$num" "${modelos_locales[$i]}"
+        fi
     done
     echo -e "\033[1;36mRemotos\033[0m"
     for i in "${!MODELOS_REMOTOS[@]}"; do
-        printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m\n" $((${#modelos_locales[@]}+i+1)) "${MODELOS_REMOTOS[$i]}"
+        local num=$((total_locales + i + 1))
+        if [[ -n "$last_sel" && "$num" -eq "$last_sel" ]]; then
+            printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m \033[33m(default)\033[0m\n" "$num" "${MODELOS_REMOTOS[$i]}"
+        else
+            printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m\n" "$num" "${MODELOS_REMOTOS[$i]}"
+        fi
     done
 
-    read -p "$(echo -e '\033[1;33mModelo (número): \033[0m')" sel
-    total=$((${#modelos_locales[@]} + ${#MODELOS_REMOTOS[@]}))
+    local prompt_msg="\033[1;33mModelo (número) [Enter para usar default${last_sel:+ $last_sel}]: \033[0m"
+    read -p "$(echo -e "$prompt_msg")" sel
+
+    # Si no ingresa nada y tenemos default, usar ese
+    if [[ -z "$sel" && -n "$last_sel" ]]; then
+        sel="$last_sel"
+    fi
+
     if [[ ! "$sel" =~ ^[0-9]+$ ]] || [[ "$sel" -lt 1 ]] || [[ "$sel" -gt "$total" ]]; then
         echo -e "\033[31mInválido\033[0m"
         exit 1
     fi
 
-    if [[ "$sel" -le "${#modelos_locales[@]}" ]]; then
+    # Guardar selección
+    echo "$sel" > "$LAST_MODEL_FILE"
+
+    if [[ "$sel" -le "$total_locales" ]]; then
         modelo="${modelos_locales[$((sel-1))]}"
         tipo="local"
         script_consulta="$DIR/consulta_local.sh"
     else
-        local idx=$((sel - ${#modelos_locales[@]} - 1))
+        local idx=$((sel - total_locales - 1))
         modelo="${MODELOS_REMOTOS[$idx]}"
         tipo="remoto"
         script_consulta="$DIR/consulta_remota.sh"
