@@ -1,5 +1,4 @@
 #!/bin/bash
-# Muestra el menú y selecciona modelo
 
 MODELOS_REMOTOS=(
     "nvidia/nemotron-3-super-120b-a12b:free"
@@ -10,19 +9,16 @@ MODELOS_REMOTOS=(
     "arcee-ai/trinity-large-thinking:free"
 )
 
-# Variables globales que se establecerán
 modelo=""
 tipo=""
 script_consulta=""
 
 seleccionar_modelo() {
-    # Obtener modelos locales
     local modelos_locales=()
     if command -v ollama >/dev/null; then
         mapfile -t modelos_locales < <(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}')
     fi
 
-    # Mostrar menú
     echo -e "\033[1;36mLocales\033[0m"
     for i in "${!modelos_locales[@]}"; do
         printf "\033[1;32m[%d]\033[0m \033[0;36m%s\033[0m\n" $((i+1)) "${modelos_locales[$i]}"
@@ -48,6 +44,12 @@ seleccionar_modelo() {
         modelo="${MODELOS_REMOTOS[$idx]}"
         tipo="remoto"
         script_consulta="$DIR/consulta_remota.sh"
+    fi
+
+    # Verificar que el script existe y es ejecutable
+    if [[ ! -x "$script_consulta" ]]; then
+        echo -e "\033[31mError: $script_consulta no existe o no es ejecutable\033[0m"
+        exit 1
     fi
 
     echo -e "\033[1;32mModelo:\033[0m \033[0;36m$modelo\033[0m ($tipo)"
