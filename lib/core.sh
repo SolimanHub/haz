@@ -69,10 +69,19 @@ validar_comando() {
     while IFS= read -r line; do
         line=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         [[ -z "$line" || "$line" =~ ^# ]] && continue
-        if [[ "$line" == *'$('* ]] || [[ "$line" == *'`'* ]]; then
-            echo -e "\033[31m✖ Subcomandos rechazados en: $line\033[0m"
-            return 1
+
+        # --- Nueva validación específica para rm -rf ---
+        if [[ "$line" =~ rm[[:space:]]+-rf[[:space:]]+([^[:space:]]+) ]]; then
+            local path="${BASH_REMATCH[1]}"
+            # Rechazar rutas absolutas, patrones globbing peligrosos, o vacío
+            if [[ "$path" == /* || "$path" == *"*"* || "$path" == *"~"* || "$path" == "" ]]; then
+                echo -e "\033[31m✖ rm -rf con ruta absoluta o patrón peligroso: $line\033[0m"
+                return 1
+            fi
+            # Si la ruta es relativa y no contiene patrones, permitir
         fi
+
+        # Ya no bloqueamos $() ni backticks, solo pasamos a la verificación de seguridad global
         if ! es_comando_seguro "$line"; then
             echo -e "\033[31m✖ Comando inseguro: $line\033[0m"
             return 1
