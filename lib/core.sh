@@ -1,7 +1,16 @@
 #!/bin/bash
 
+# Directorio de logs (expande ~ correctamente)
+LOGS_DIR="$HOME/logs_haz"
+
+# Crear directorio de logs si no existe
+if [ ! -d "$LOGS_DIR" ]; then
+    mkdir -p "$LOGS_DIR"
+fi
+
 generar_nombre_archivo_md() {
-    date +"log_haz_command_%Y-%m-%d_%H-%M-%S.md"
+    # Devuelve la ruta completa dentro de LOGS_DIR
+    echo "$LOGS_DIR/log_haz_command_$(date +'%Y-%m-%d_%H-%M-%S').md"
 }
 
 es_comando_seguro() {
@@ -22,7 +31,7 @@ verificar_dependencias() {
         echo -e "\033[31mError: instala curl y jq\033[0m"
         exit 1
     }
-    # Opcional: verificar que exista el archivo de prompt
+    # Verificar que exista el archivo de prompt
     if [[ ! -f "$DIR/config/prompt.md" ]]; then
         echo -e "\033[31mError: No se encuentra config/prompt.md\033[0m"
         echo "Crea el archivo con el contenido base."
@@ -70,18 +79,15 @@ validar_comando() {
         line=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         [[ -z "$line" || "$line" =~ ^# ]] && continue
 
-        # --- Nueva validación específica para rm -rf ---
+        # Validación específica para rm -rf
         if [[ "$line" =~ rm[[:space:]]+-rf[[:space:]]+([^[:space:]]+) ]]; then
             local path="${BASH_REMATCH[1]}"
-            # Rechazar rutas absolutas, patrones globbing peligrosos, o vacío
             if [[ "$path" == /* || "$path" == *"*"* || "$path" == *"~"* || "$path" == "" ]]; then
                 echo -e "\033[31m✖ rm -rf con ruta absoluta o patrón peligroso: $line\033[0m"
                 return 1
             fi
-            # Si la ruta es relativa y no contiene patrones, permitir
         fi
 
-        # Ya no bloqueamos $() ni backticks, solo pasamos a la verificación de seguridad global
         if ! es_comando_seguro "$line"; then
             echo -e "\033[31m✖ Comando inseguro: $line\033[0m"
             return 1
