@@ -38,7 +38,7 @@ headers+=(-H "HTTP-Referer: https://github.com/haz" -H "X-Title: haz")
 response_file=$(mktemp)
 
 # Realizar petición
-http_code=$(curl -s --max-time 120 -w "%{http_code}" -X POST "$url" "${headers[@]}" -d "$payload" -o "$response_file")
+http_code=$(curl -s --max-time 140 -w "%{http_code}" -X POST "$url" "${headers[@]}" -d "$payload" -o "$response_file")
 
 if [ "$http_code" -ne 200 ]; then
     echo "ERROR: OpenRouter respondió con HTTP $http_code" >&2
