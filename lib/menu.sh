@@ -7,6 +7,8 @@ MODELOS_REMOTOS=(
     "z-ai/glm-4.5-air:free"
     "deepseek/deepseek-v4-flash:free"
     "arcee-ai/trinity-large-thinking:free"
+    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
+    "qwen/qwen3-coder:free"
 )
 
 modelo=""
