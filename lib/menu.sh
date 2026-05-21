@@ -13,6 +13,45 @@ modelo=""
 tipo=""
 script_consulta=""
 LAST_MODEL_FILE="$HOME/.haz/haz_last_model"
+# Variable para exportar el índice seleccionado
+MODEL_INDEX=""
+
+asignar_modelo_por_indice() {
+    local indice="$1"
+    local modelos_locales=()
+    if command -v ollama >/dev/null; then
+        mapfile -t modelos_locales < <(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}')
+    fi
+    local total_locales=${#modelos_locales[@]}
+    local total_remotos=${#MODELOS_REMOTOS[@]}
+    local total=$((total_locales + total_remotos))
+
+    if [[ ! "$indice" =~ ^[0-9]+$ ]] || [[ "$indice" -lt 1 ]] || [[ "$indice" -gt "$total" ]]; then
+        echo -e "\033[31mÍndice de modelo inválido: $indice\033[0m"
+        exit 1
+    fi
+
+    if [[ "$indice" -le "$total_locales" ]]; then
+        modelo="${modelos_locales[$((indice-1))]}"
+        tipo="local"
+        script_consulta="$DIR/consulta_local.sh"
+    else
+        local idx=$((indice - total_locales - 1))
+        modelo="${MODELOS_REMOTOS[$idx]}"
+        tipo="remoto"
+        script_consulta="$DIR/consulta_remota.sh"
+    fi
+
+    if [[ ! -x "$script_consulta" ]]; then
+        echo -e "\033[31mError: script de consulta no encontrado o sin permisos\033[0m"
+        exit 1
+    fi
+
+    # Guardar selección y exportar índice
+    echo "$indice" > "$LAST_MODEL_FILE"
+    export MODEL_INDEX="$indice"
+    echo -e "\033[1;32mModelo:\033[0m \033[0;36m$modelo\033[0m ($tipo) [automático]"
+}
 
 seleccionar_modelo() {
     local modelos_locales=()
@@ -28,7 +67,6 @@ seleccionar_modelo() {
     local last_sel=""
     if [[ -f "$LAST_MODEL_FILE" ]]; then
         last_sel=$(cat "$LAST_MODEL_FILE")
-        # Validar que el número esté en rango (por si cambió la lista)
         if [[ ! "$last_sel" =~ ^[0-9]+$ ]] || [[ "$last_sel" -lt 1 ]] || [[ "$last_sel" -gt "$total" ]]; then
             last_sel=""
         fi
@@ -67,8 +105,9 @@ seleccionar_modelo() {
         exit 1
     fi
 
-    # Guardar selección
+    # Guardar selección y exportar índice
     echo "$sel" > "$LAST_MODEL_FILE"
+    export MODEL_INDEX="$sel"
 
     if [[ "$sel" -le "$total_locales" ]]; then
         modelo="${modelos_locales[$((sel-1))]}"
@@ -81,7 +120,6 @@ seleccionar_modelo() {
         script_consulta="$DIR/consulta_remota.sh"
     fi
 
-    # Verificar que el script existe y es ejecutable
     if [[ ! -x "$script_consulta" ]]; then
         echo -e "\033[31mError: $script_consulta no existe o no es ejecutable\033[0m"
         exit 1

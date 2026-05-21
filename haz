@@ -2,6 +2,31 @@
 # Obtener el directorio donde está este script (haz)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# --- Nuevo: procesar argumentos -m y --depth ---
+model_flag=""
+recursion_depth=0
+while [[ "$1" =~ ^- ]]; do
+    case "$1" in
+        -m) model_flag="$2"; shift 2 ;;
+        --depth) recursion_depth="$2"; shift 2 ;;
+        *) break ;;
+    esac
+done
+
+query="$*"
+if [ -z "$query" ]; then
+    echo -e "\033[31mError: falta la consulta\033[0m"
+    echo "Uso: haz [-m <índice>] [--depth <n>] <consulta>"
+    exit 1
+fi
+
+# --- Control de profundidad máxima ---
+recursion_depth=${recursion_depth:-0}
+if [ "$recursion_depth" -ge 3 ]; then
+    echo -e "\033[31m✖ Profundidad máxima de recursión alcanzada (3). Abortando.\033[0m"
+    exit 1
+fi
+
 # Importar módulos (usando rutas absolutas)
 source "$DIR/lib/core.sh"
 source "$DIR/lib/menu.sh"
@@ -11,14 +36,28 @@ source "$DIR/lib/analyzer.sh"
 # Verificar dependencias básicas
 verificar_dependencias
 
-# Argumentos
-[ "$#" -lt 1 ] && { mostrar_uso; exit 1; }
-query="$*"
-my_system=$(hostnamectl | grep -E "Operating System|Kernel|Architecture" | head -n 3)
-prompt=$(generar_prompt "$my_system" "$query")   # esta función ahora busca config/prompt.md
+# --- Selección de modelo (automática o interactiva) ---
+if [ -n "$model_flag" ]; then
+    # Modo no interactivo
+    asignar_modelo_por_indice "$model_flag"
+else
+    seleccionar_modelo
+fi
 
-# Seleccionar modelo (establece modelo, tipo, script_consulta)
-seleccionar_modelo
+# Exportar el índice del modelo usado (para uso en recursividad y prompt)
+export MODEL_INDEX
+
+# --- Mensaje de recursión ---
+if [ "$recursion_depth" -gt 0 ]; then
+    echo -e "\033[35m↳ Nivel $recursion_depth: ejecutando subtarea...\033[0m"
+    echo -e "\033[35m   Consulta: $query\033[0m"
+fi
+
+# Obtener información del sistema
+my_system=$(hostnamectl | grep -E "Operating System|Kernel|Architecture" | head -n 3)
+
+# Generar prompt (ahora incluye profundidad e índice de modelo)
+prompt=$(generar_prompt "$my_system" "$query" "$recursion_depth" "$MODEL_INDEX")
 
 # Obtener respuesta cruda del modelo
 respuesta_cruda=$("$script_consulta" "$modelo" "$prompt" 2>&1)
@@ -39,7 +78,7 @@ fi
 # Validar seguridad
 validar_comando "$comando" || exit 1
 
-# Archivo de registro
+# Archivo de registro (su uso se adapta dentro de inicializar_registro)
 archivo=$(generar_nombre_archivo_md)
 inicializar_registro "$archivo" "$query" "$modelo" "$tipo" "$comando"
 

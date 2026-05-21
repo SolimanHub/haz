@@ -3,7 +3,7 @@
 
 analizar_si_es_necesario() {
     local comando="$1"
-    local archivo="$2"
+    local archivo="${HAZ_LOG_FILE:-$2}"
     local modelo="$3"
     local tipo="$4"
     local script_consulta="$5"
@@ -14,7 +14,7 @@ analizar_si_es_necesario() {
         return
     fi
 
-    # Extraer la salida del archivo (texto entre ```text y ```)
+    # Extraer la salida del archivo de log (texto entre ```text y ```)
     local salida
     salida=$(awk '/^```text$/,/^```$/{if(!/^```/&&!/^##/&&!/^#/)print}' "$archivo" | head -n -1)
 

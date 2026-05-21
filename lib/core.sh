@@ -2,6 +2,8 @@
 
 # Directorio de logs (expande ~ correctamente)
 LOGS_DIR="$HOME/.haz/logs_haz"
+export LOGS_DIR
+export HAZ_LOG_FILE=""
 
 # Crear directorio de logs si no existe
 if [ ! -d "$LOGS_DIR" ]; then
@@ -9,7 +11,6 @@ if [ ! -d "$LOGS_DIR" ]; then
 fi
 
 generar_nombre_archivo_md() {
-    # Devuelve la ruta completa dentro de LOGS_DIR
     echo "$LOGS_DIR/log_haz_command_$(date +'%Y-%m-%d_%H-%M-%S').md"
 }
 
@@ -31,7 +32,6 @@ verificar_dependencias() {
         echo -e "\033[31mError: instala curl y jq\033[0m"
         exit 1
     }
-    # Verificar que exista el archivo de prompt
     if [[ ! -f "$DIR/config/prompt.md" ]]; then
         echo -e "\033[31mError: No se encuentra config/prompt.md\033[0m"
         echo "Crea el archivo con el contenido base."
@@ -40,10 +40,9 @@ verificar_dependencias() {
 }
 
 mostrar_uso() {
-    echo -e "\033[31mUso: haz <consulta>\033[0m"
+    echo -e "\033[31mUso: haz [-m <índice>] [--depth <n>] <consulta>\033[0m"
 }
 
-# Lee el archivo de prompt markdown
 leer_prompt_base() {
     local prompt_file="$DIR/config/prompt.md"
     if [[ ! -f "$prompt_file" ]]; then
@@ -53,14 +52,32 @@ leer_prompt_base() {
     cat "$prompt_file"
 }
 
-# Genera el prompt final reemplazando {{system_info}} y {{query}}
 generar_prompt() {
     local my_system="$1"
     local query="$2"
+    local depth="$3"
+    local model_index="$4"
     local base_prompt
     base_prompt=$(leer_prompt_base)
     base_prompt="${base_prompt//'{{system_info}}'/$my_system}"
     base_prompt="${base_prompt//'{{query}}'/$query}"
+
+    # Leer ficheros mencionados en la consulta
+    source "$DIR/lib/file_reader.sh"
+    local ficheros_contenido=$(leer_ficheros_de_consulta "$query" "$PWD")
+    if [ -n "$ficheros_contenido" ]; then
+        base_prompt+="
+
+## Ficheros proporcionados para esta tarea
+$ficheros_contenido"
+    fi
+
+    # Inyectar información de recursividad
+    base_prompt+="
+**Índice del modelo actual**: $model_index
+**Profundidad de recursión actual**: $depth (máx: 3)
+"
+
     echo "$base_prompt"
 }
 

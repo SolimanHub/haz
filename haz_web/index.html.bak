@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Haz - Tu ayudante en Linux</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <header>
+        <h1>Asistente Haz</h1>
+        <p>Una herramienta de inteligencia artificial para ayudarte con tareas en Linux/Unix.</p>
+    </header>
+    <main>
+        <section>
+            <h2>¿Qué es Asistente Haz?</h2>
+            <p>Asistente Haz es un asistente virtual diseñado para generar comandos, scripts y soluciones para sistemas Linux/Unix. ¡Optimiza tu flujo de trabajo con IA!</p>
+        </section>
+        <section>
+            <h2>Características</h2>
+            <ul>
+                <li>Generación de comandos personalizados</li>
+                <li>Scripts para automatización</li>
+                <li>Soluciones seguras y eficientes</li>
+                <li>Compatibilidad con Debian y otras distribuciones</li>
+            </ul>
+        </section>
+        <section>
+            <button id="accion">¡Probar ahora!</button>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2024 Asistente Haz. Todos los derechos reservados.</p>
+        <p>Desarrollado con &hearts; en Linux.</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
