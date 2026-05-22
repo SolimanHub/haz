@@ -7,9 +7,11 @@ MODELOS_REMOTOS=(
     "z-ai/glm-4.5-air:free"
     "deepseek/deepseek-v4-flash:free"
     "arcee-ai/trinity-large-thinking:free"
+    "liquid/lfm-2.5-1.2b-instruct:free"
     "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
     "qwen/qwen3-coder:free"
 )
+# usar "liquid/lfm-2.5-1.2b-instruct:free" para evaluar prompts y determinar si crear un nuevo prompt recargado
 
 modelo=""
 tipo=""

@@ -1,4 +1,5 @@
 #!/bin/bash
+#echo "revisar linea 63"
 # Obtener el directorio donde está este script (haz)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -9,6 +10,7 @@ while [[ "$1" =~ ^- ]]; do
     case "$1" in
         -m) model_flag="$2"; shift 2 ;;
         --depth) recursion_depth="$2"; shift 2 ;;
+        -r) recursion_depth="$2"; shift 2 ;;
         *) break ;;
     esac
 done
@@ -16,7 +18,7 @@ done
 query="$*"
 if [ -z "$query" ]; then
     echo -e "\033[31mError: falta la consulta\033[0m"
-    echo "Uso: haz [-m <índice>] [--depth <n>] <consulta>"
+    echo "Uso: haz [-m <índice>] [--depth <n>||-r <n>] <consulta>"
     exit 1
 fi
 
