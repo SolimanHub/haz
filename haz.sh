@@ -3,11 +3,13 @@
 # Obtener el directorio donde está este script (haz)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# --- Procesar argumentos -m, -t, --depth y -r ---
+# --- Procesar argumentos -m, -t, -f, --depth y -r ---
 model_flag=""
 auto_model=false
-recursion_depth=2          # Valor por defecto cambiado a 2
+recursion_depth=2
 tree_flag=false
+user_files_flag=false
+USER_FILES=()
 
 while [[ "$1" =~ ^- ]]; do
     case "$1" in
@@ -23,6 +25,27 @@ while [[ "$1" =~ ^- ]]; do
         -t)
             tree_flag=true
             shift
+            ;;
+        -f)
+            user_files_flag=true
+            # Aceptar múltiples archivos si el shell expandió llaves
+            # El siguiente argumento es la ruta del archivo
+            if [[ -n "$2" && "$2" != -* ]]; then
+                USER_FILES+=("$2")
+                shift 2
+            else
+                echo -e "\033[31mError: -f requiere una ruta de archivo\033[0m"
+                exit 1
+            fi
+            # Si se usaron llaves, el shell habrá generado varios argumentos,
+            # pero nuestro bucle solo procesa uno por -f. Para permitir múltiples -f
+            # consecutivos (expansión de llaves), necesitamos seguir capturando mientras
+            # los argumentos no empiecen con '-'.
+            while [[ $# -gt 1 && "$2" != -* && -n "$2" ]]; do
+                # Si el siguiente también es un archivo (por expansión), añadirlo
+                USER_FILES+=("$2")
+                shift
+            done
             ;;
         --depth)
             recursion_depth="$2"
@@ -41,10 +64,11 @@ done
 query="$*"
 if [ -z "$query" ]; then
     echo -e "\033[31mError: falta la consulta\033[0m"
-    echo "Uso: haz [-m <índice>] [-t] [--depth <n>|-r <n>] <consulta>"
+    echo "Uso: haz [-m <índice>] [-t] [-f <archivo> ...] [--depth <n>|-r <n>] <consulta>"
     echo "  -m <índice>   Seleccionar modelo por número"
     echo "  -m            Usar automáticamente el modelo por defecto"
     echo "  -t            Generar mapa del proyecto y añadirlo al prompt"
+    echo "  -f <archivo>  Añadir contenido de archivo(s) al prompt (acepta múltiples -f y expansión de llaves)"
     exit 1
 fi
 
@@ -54,7 +78,7 @@ if [ "$recursion_depth" -gt 5 ]; then
     exit 1
 fi
 
-# Importar módulos (rutas absolutas) – se elimina preanalysis
+# Importar módulos (rutas absolutas)
 source "$DIR/lib/core.sh"
 source "$DIR/lib/menu.sh"
 source "$DIR/lib/executor.sh"
@@ -116,6 +140,51 @@ ${mapa}
         fi
     else
         echo -e "\033[33m⚠  No se encuentra o no es ejecutable: $map_script\033[0m"
+    fi
+fi
+
+# --- Archivos proporcionados por el usuario (-f) ---
+if $user_files_flag && [ ${#USER_FILES[@]} -gt 0 ]; then
+    echo -e "\033[36m📄 Procesando ${#USER_FILES[@]} archivo(s) proporcionado(s)...\033[0m"
+    file_contents=""
+    max_size_kb=100
+    for file in "${USER_FILES[@]}"; do
+        # Si es ruta relativa, completar con el directorio actual
+        if [[ "$file" != /* && "$file" != ~* ]]; then
+            file="$PWD/$file"
+        fi
+        # Expandir ~
+        file="${file/#\~/$HOME}"
+        if [ -f "$file" ]; then
+            mimetype=$(file -b --mime-type "$file" 2>/dev/null)
+            case "$mimetype" in
+                text/*|application/json|application/xml|application/xhtml+xml|application/javascript|application/x-shellscript) ;;
+                *) echo -e "\033[33m⚠  Omitido (tipo no soportado): $file\033[0m" >&2; continue ;;
+            esac
+            size_kb=$(du -k "$file" | cut -f1)
+            if [ "$size_kb" -gt "$max_size_kb" ]; then
+                echo -e "\033[33m⚠  Omitido (excede $max_size_kb KB): $file\033[0m" >&2
+                continue
+            fi
+            content=$(cat "$file" 2>/dev/null)
+            file_contents+="### ${file}
+\`\`\`
+${content}
+\`\`\`
+
+"
+        else
+            echo -e "\033[33m⚠  Archivo no encontrado: $file\033[0m" >&2
+        fi
+    done
+    if [ -n "$file_contents" ]; then
+        prompt+="
+
+## Archivos proporcionados por el usuario
+${file_contents}"
+        echo -e "\033[35m✔  Contenido de archivos añadido al prompt\033[0m"
+    else
+        echo -e "\033[33m⚠  No se pudo añadir contenido de archivos\033[0m"
     fi
 fi
 
