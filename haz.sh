@@ -1,35 +1,60 @@
 #!/bin/bash
-#echo "revisar linea 63"
+
 # Obtener el directorio donde está este script (haz)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# --- Nuevo: procesar argumentos -m y --depth ---
+# --- Procesar argumentos -m, -t, --depth y -r ---
 model_flag=""
-recursion_depth=0
+auto_model=false
+recursion_depth=2          # Valor por defecto cambiado a 2
+tree_flag=false
+
 while [[ "$1" =~ ^- ]]; do
     case "$1" in
-        -m) model_flag="$2"; shift 2 ;;
-        --depth) recursion_depth="$2"; shift 2 ;;
-        -r) recursion_depth="$2"; shift 2 ;;
-        *) break ;;
+        -m)
+            if [[ "$2" =~ ^[0-9]+$ ]]; then
+                model_flag="$2"
+                shift 2
+            else
+                auto_model=true
+                shift
+            fi
+            ;;
+        -t)
+            tree_flag=true
+            shift
+            ;;
+        --depth)
+            recursion_depth="$2"
+            shift 2
+            ;;
+        -r)
+            recursion_depth="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
     esac
 done
 
 query="$*"
 if [ -z "$query" ]; then
     echo -e "\033[31mError: falta la consulta\033[0m"
-    echo "Uso: haz [-m <índice>] [--depth <n>||-r <n>] <consulta>"
+    echo "Uso: haz [-m <índice>] [-t] [--depth <n>|-r <n>] <consulta>"
+    echo "  -m <índice>   Seleccionar modelo por número"
+    echo "  -m            Usar automáticamente el modelo por defecto"
+    echo "  -t            Generar mapa del proyecto y añadirlo al prompt"
     exit 1
 fi
 
 # --- Control de profundidad máxima ---
-recursion_depth=${recursion_depth:-0}
-if [ "$recursion_depth" -ge 3 ]; then
-    echo -e "\033[31m✖ Profundidad máxima de recursión alcanzada (3). Abortando.\033[0m"
+if [ "$recursion_depth" -gt 5 ]; then
+    echo -e "\033[31m✖ Profundidad máxima de recursión alcanzada (5). Abortando.\033[0m"
     exit 1
 fi
 
-# Importar módulos (usando rutas absolutas)
+# Importar módulos (rutas absolutas) – se elimina preanalysis
 source "$DIR/lib/core.sh"
 source "$DIR/lib/menu.sh"
 source "$DIR/lib/executor.sh"
@@ -38,15 +63,26 @@ source "$DIR/lib/analyzer.sh"
 # Verificar dependencias básicas
 verificar_dependencias
 
-# --- Selección de modelo (automática o interactiva) ---
+# --- Selección de modelo principal ---
 if [ -n "$model_flag" ]; then
-    # Modo no interactivo
     asignar_modelo_por_indice "$model_flag"
+elif $auto_model; then
+    if [[ -f "$LAST_MODEL_FILE" ]]; then
+        default_index=$(cat "$LAST_MODEL_FILE")
+        if [[ "$default_index" =~ ^[0-9]+$ ]]; then
+            asignar_modelo_por_indice "$default_index"
+        else
+            echo -e "\033[31mError: archivo de modelo por defecto inválido\033[0m"
+            exit 1
+        fi
+    else
+        echo -e "\033[31mError: no hay modelo por defecto. Ejecute 'haz' sin -m para seleccionar uno.\033[0m"
+        exit 1
+    fi
 else
     seleccionar_modelo
 fi
 
-# Exportar el índice del modelo usado (para uso en recursividad y prompt)
 export MODEL_INDEX
 
 # --- Mensaje de recursión ---
@@ -58,10 +94,32 @@ fi
 # Obtener información del sistema
 my_system=$(hostnamectl | grep -E "Operating System|Kernel|Architecture" | head -n 3)
 
-# Generar prompt (ahora incluye profundidad e índice de modelo)
+# Generar prompt base (sin preanálisis)
 prompt=$(generar_prompt "$my_system" "$query" "$recursion_depth" "$MODEL_INDEX")
 
-# Obtener respuesta cruda del modelo
+# --- Mapa del proyecto (opción -t) ---
+if $tree_flag; then
+    map_script="$DIR/scripts/mapear.sh"
+    if [[ -x "$map_script" ]]; then
+        echo -e "\033[36m🗺  Generando mapa del proyecto...\033[0m"
+        mapa=$("$map_script" "$PWD" 2>&1)
+        if [[ -n "$mapa" ]]; then
+            prompt+="
+
+## Mapa del proyecto
+\`\`\`
+${mapa}
+\`\`\`"
+            echo -e "\033[35m✔  Mapa añadido al prompt\033[0m"
+        else
+            echo -e "\033[33m⚠  El mapa está vacío\033[0m"
+        fi
+    else
+        echo -e "\033[33m⚠  No se encuentra o no es ejecutable: $map_script\033[0m"
+    fi
+fi
+
+# Obtener respuesta cruda del modelo principal
 respuesta_cruda=$("$script_consulta" "$modelo" "$prompt" 2>&1)
 if [ $? -ne 0 ] || [ -z "$respuesta_cruda" ]; then
     echo -e "\033[31m✖ Fallo en la consulta al modelo\033[0m"
@@ -80,7 +138,7 @@ fi
 # Validar seguridad
 validar_comando "$comando" || exit 1
 
-# Archivo de registro (su uso se adapta dentro de inicializar_registro)
+# Archivo de registro
 archivo=$(generar_nombre_archivo_md)
 inicializar_registro "$archivo" "$query" "$modelo" "$tipo" "$comando"
 

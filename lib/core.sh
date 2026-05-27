@@ -75,7 +75,7 @@ $ficheros_contenido"
     # Inyectar información de recursividad
     base_prompt+="
 **Índice del modelo actual**: $model_index
-**Profundidad de recursión actual**: $depth (máx: 3)
+**Profundidad de recursión actual**: $depth (máx: 5)
 "
 
     echo "$base_prompt"

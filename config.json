@@ -1,0 +1,9 @@
+{
+  "preanalysis": {
+    "enabled": true,
+    "model": "liquid/lfm-2.5-1.2b-instruct:free",
+    "type": "remote",
+    "max_recursion": 5
+  },
+  "exclude_patterns": ".git,node_modules,.env,.gitignore,.cache,__pycache__,.DS_Store,dist,build,*.bak,*.log,.vscode,.idea,*.o,*.so,*.a"
+}
