@@ -16,7 +16,7 @@
 # Lee config.json y exporta las variables de configuración.
 # ------------------------------------------------------------------
 _cargar_config_preanalisis() {
-    local config_file="$DIR/config.json"
+    local config_file="$DIR/config/config.json"
 
     if [[ ! -f "$config_file" ]]; then
         PREANALISIS_ENABLED="false"

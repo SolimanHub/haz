@@ -38,12 +38,12 @@ asignar_modelo_por_indice() {
     if [[ "$indice" -le "$total_locales" ]]; then
         modelo="${modelos_locales[$((indice-1))]}"
         tipo="local"
-        script_consulta="$DIR/consulta_local.sh"
+        script_consulta="$DIR/scripts/consulta_local.sh"
     else
         local idx=$((indice - total_locales - 1))
         modelo="${MODELOS_REMOTOS[$idx]}"
         tipo="remoto"
-        script_consulta="$DIR/consulta_remota.sh"
+        script_consulta="$DIR/scripts/consulta_remota.sh"
     fi
 
     if [[ ! -x "$script_consulta" ]]; then
@@ -116,12 +116,12 @@ seleccionar_modelo() {
     if [[ "$sel" -le "$total_locales" ]]; then
         modelo="${modelos_locales[$((sel-1))]}"
         tipo="local"
-        script_consulta="$DIR/consulta_local.sh"
+        script_consulta="$DIR/scripts/consulta_local.sh"
     else
         local idx=$((sel - total_locales - 1))
         modelo="${MODELOS_REMOTOS[$idx]}"
         tipo="remoto"
-        script_consulta="$DIR/consulta_remota.sh"
+        script_consulta="$DIR/scripts/consulta_remota.sh"
     fi
 
     if [[ ! -x "$script_consulta" ]]; then
