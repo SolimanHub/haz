@@ -28,24 +28,19 @@ while [[ "$1" =~ ^- ]]; do
             ;;
         -f)
             user_files_flag=true
-            # Aceptar múltiples archivos si el shell expandió llaves
-            # El siguiente argumento es la ruta del archivo
             if [[ -n "$2" && "$2" != -* ]]; then
-                USER_FILES+=("$2")
+                # Aceptar lista separada por comas (ej: -f file1,file2)
+                IFS=',' read -ra files <<< "$2"
+                for f in "${files[@]}"; do
+                    # Limpiar espacios alrededor
+                    f_clean=$(echo "$f" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                    [[ -n "$f_clean" ]] && USER_FILES+=("$f_clean")
+                done
                 shift 2
             else
                 echo -e "\033[31mError: -f requiere una ruta de archivo\033[0m"
                 exit 1
             fi
-            # Si se usaron llaves, el shell habrá generado varios argumentos,
-            # pero nuestro bucle solo procesa uno por -f. Para permitir múltiples -f
-            # consecutivos (expansión de llaves), necesitamos seguir capturando mientras
-            # los argumentos no empiecen con '-'.
-            while [[ $# -gt 1 && "$2" != -* && -n "$2" ]]; do
-                # Si el siguiente también es un archivo (por expansión), añadirlo
-                USER_FILES+=("$2")
-                shift
-            done
             ;;
         --depth)
             recursion_depth="$2"
@@ -64,11 +59,7 @@ done
 query="$*"
 if [ -z "$query" ]; then
     echo -e "\033[31mError: falta la consulta\033[0m"
-    echo "Uso: haz [-m <índice>] [-t] [-f <archivo> ...] [--depth <n>|-r <n>] <consulta>"
-    echo "  -m <índice>   Seleccionar modelo por número"
-    echo "  -m            Usar automáticamente el modelo por defecto"
-    echo "  -t            Generar mapa del proyecto y añadirlo al prompt"
-    echo "  -f <archivo>  Añadir contenido de archivo(s) al prompt (acepta múltiples -f y expansión de llaves)"
+    echo "Uso: haz [-m <índice>] [-t] [-f <archivo[,archivo...]>] [--depth <n>|-r <n>] <consulta>"
     exit 1
 fi
 

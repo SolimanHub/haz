@@ -125,7 +125,7 @@ recolectar_rutas() {
         rel="${r#./}"
         debe_excluir "$rel" && continue
         echo "$rel"
-    done | sort -u
+    done
 }
 
 # -----------------------------------------------------------------------------
@@ -173,6 +173,6 @@ if [[ "$SCRIPT_ABS" == "$(pwd)"* ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Generar y mostrar el árbol
+# Generar y mostrar el árbol (ordenado y sin duplicados)
 # -----------------------------------------------------------------------------
-recolectar_rutas | generar_arbol_desde_lista
+recolectar_rutas | sort -u | generar_arbol_desde_lista
